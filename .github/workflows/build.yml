@@ -1,0 +1,29 @@
+name: Build fork PR (checkout-exec)
+
+# Q1 replica — classic fork-code-checkout pwn-request. PRT explicitly checks out the
+# fork PR head SHA, then executes code from the checked-out tree. Post the June/July
+# 2026 actions/checkout hardening, checkout@v4 should REFUSE/ERROR on this ref: under
+# pull_request_target (that refusal is the finding). A SHA-pinned pre-fix checkout
+# (see build-prefix.yml) is the contrast that should still check out and execute.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork PR head (@v4, hardened)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # Executes attacker-controlled code from the checked-out tree. If checkout
+      # refused above, this file is absent / the step fails — that is the block.
+      - name: Run build script from checked-out code
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          chmod +x ./ci/build.sh
+          ./ci/build.sh
